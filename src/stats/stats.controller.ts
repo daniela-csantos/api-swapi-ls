@@ -18,7 +18,7 @@ export class StatsController {
   @ApiResponse({ status: 200, description: 'Ok' })
   @Get('stats')
   async getStats(): Promise<Object> {
-    return await this.statsService.getStatsFromAllPaths()
+    return await this.statsService.getAllCachedStats()
   }
 
 }
