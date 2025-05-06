@@ -56,21 +56,16 @@ The project is dockerized and can be run using Docker Compose. It includes both 
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/your-repo/star-wars-api-proxy.git
-   cd star-wars-api-proxy
+   git clone git@github.com:daniela-csantos/api-swapi-ls.git
+   cd api-swapi-ls
    ```
 
-2. Create a `.env` file based on the `.env.example` template and fill in the required values:
-   ```bash
-   cp .env.example .env
-   ```
-
-3. Run Docker Compose to start both the NestJS API and Redis containers:
+2. Run Docker Compose to start both the NestJS API and Redis containers:
    ```bash
    docker-compose up --build
    ```
 
-4. The API will be available at `http://localhost:{PORT}` (replace `{PORT}` with the port specified in `.env`).
+3. The API will be available at `http://localhost:{PORT}` (replace `{PORT}` with the port specified in `.env`).
 
 ---
 
@@ -81,7 +76,7 @@ The project is dockerized and can be run using Docker Compose. It includes both 
 Unit tests can be run using Jest, the testing framework integrated with the project:
 
 ```bash
-docker-compose exec api npm run test
+npm run test
 ```
 
 ### Running Test Coverage
@@ -89,29 +84,28 @@ docker-compose exec api npm run test
 To generate a test coverage report, run the following command:
 
 ```bash
-docker-compose exec api npm run test:cov
+npm run test:cov
 ```
 
 The coverage report will be displayed in the terminal, showing which parts of the code are covered by tests.
 
 ---
 
-## CI/CD Integration
-
-This project includes a GitHub Actions configuration that automatically builds, tests, and deploys the application on each push to the `develop` or `main` branches.
 
 ### GitFlow Strategy
 
 The repository follows GitFlow principles:
 - **Main Branch**: Stable production-ready code.
-- **Develop Branch**: All new features and bug fixes are merged here first.
-- **Feature Branches**: Created from the `develop` branch for new features.
+- **Feature Branches**: Created from the `main` branch for new features.
+- **Task Branches**: Created from the `main` branch for tasks whithin features.
 
 ---
 
 ## Environment Variables
 
 This project uses environment variables that need to be set in the `.env` file:
+- `SWAPI_BASE_URL`: SWAPI API.
+- `CORS_ORIGIN`: The origins you allow calling for your API.
 - `PORT`: The port the NestJS API will run on.
 - `API_KEY`: The API key for authentication.
 - `REDIS_HOST`: Redis hostname (should be `localhost` if running Redis locally).
@@ -127,15 +121,9 @@ This application uses **Swagger** for automatic API documentation. Swagger provi
 
 Once the application is running, you can access the Swagger documentation at the following URL:
 
-`http://localhost:3000/api`
+`http://localhost:3001/api`
 
 
-### Features of the Swagger UI
-
-- **Endpoint Details**: Each endpoint is listed with its HTTP method (GET, POST, PUT, DELETE, etc.), route, and available responses.
-- **Request Parameters**: Swagger automatically detects and displays the parameters that each endpoint requires, including path parameters, query parameters, and request bodies.
-- **Response Descriptions**: Each possible response (like 200, 400, 404, etc.) is documented with its description and potential response body structure.
-- **Interactive Testing**: You can directly test the endpoints by providing sample data in the Swagger UI, making it easy to interact with the API.
 
 ### How the API is Documented
 
