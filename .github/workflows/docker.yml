@@ -1,0 +1,32 @@
+name: Docker CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Build the Docker image
+        run: |
+          docker build -t nestjs-api .
+
+      - name: Run tests
+        run: |
+          docker run --rm nestjs-api npm run test
+
+      - name: Push the Docker image
+        run: |
+          docker tag nestjs-api your-dockerhub-username/nestjs-api:latest
+          docker push your-dockerhub-username/nestjs-api:latest
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
