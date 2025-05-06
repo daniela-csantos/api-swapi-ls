@@ -11,7 +11,7 @@ services:
 
   app:
     build: .
-    container_name: nestjs-api
+    container_name: api-swapi-ls
     ports:
       - "${PORT}:${PORT}" 
     environment:
