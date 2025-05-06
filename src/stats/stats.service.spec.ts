@@ -1,95 +1,80 @@
+import { Test, TestingModule } from '@nestjs/testing';
 import { StatsService } from './stats.service';
 import { Redis } from 'ioredis';
 
 describe('StatsService', () => {
-  let statsService: StatsService;
+  let service: StatsService;
   let redisMock: Partial<Redis>;
 
-  beforeEach(() => {
-    const multiMock = {
-      get: jest.fn().mockReturnThis(), 
-      exec: jest.fn().mockResolvedValue([
-        [null, '5'],
-        [null, '50']
-      ])
-    };
+  beforeEach(async () => {
     redisMock = {
+      incr: jest.fn(),
+      incrby: jest.fn(),
+      sadd: jest.fn(),
       smembers: jest.fn(),
       get: jest.fn(),
       mget: jest.fn(),
-      multi: jest.fn().mockReturnValue(multiMock),
-      exec: jest.fn()
+      set: jest.fn(),
     };
 
-    statsService = new StatsService(redisMock as Redis);
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        StatsService,
+        { provide: 'REDIS_CLIENT', useValue: redisMock },
+      ],
+    }).compile();
+
+    service = module.get<StatsService>(StatsService);
   });
 
-  describe('getBusiestHour', () => {
-    it('should return the hour with most requests', async () => {
-      redisMock.mget = jest.fn().mockResolvedValue([
-        '1', '3', '0', '7', '10', '5', '20', '0', '0', '0',
-        ...Array(14).fill('0')
-      ]);
-      const result = await statsService.getBusiestHour('people');
-      expect(result).toEqual({
-        path: 'people',
-        busiestHour: '06',
-        requests: 20
-      });
-    });
+  it('should record request stats', async () => {
+    await service.recordRequestStats('/people', 120);
+
+    expect(redisMock.incr).toHaveBeenCalledWith('stats:/people:hour:' + new Date().getHours().toString().padStart(2, '0'));
+    expect(redisMock.incr).toHaveBeenCalledWith('stats:/people:count');
+    expect(redisMock.incrby).toHaveBeenCalledWith('stats:/people:total_time', 120);
+    expect(redisMock.sadd).toHaveBeenCalledWith('stats:paths', '/people');
   });
 
-  describe('getStatsFromAllPaths', () => {
-    it('should return stats for all paths', async () => {
-      redisMock.smembers = jest.fn().mockResolvedValue(['people']);
-      redisMock.get = jest.fn()
-        .mockResolvedValueOnce('100') // total
-        .mockResolvedValueOnce('10'); // count
-
-      redisMock.mget = jest.fn().mockResolvedValue([
-        '1',
-        ...Array(23).fill('0')
-      ]);
-
-      const result = await statsService.getStatsFromAllPaths();
-
-      expect(result).toEqual({
-        people: {
-          count: 10,
-          busiestHour: {
-            path: 'people',
-            busiestHour: '00',
-            requests: 1
-          },
-          averageResponseTime: '10.00ms'
-        }
+  it('should calculate and cache stats', async () => {
+    redisMock.smembers = jest.fn().mockResolvedValue(['/people']);
+    redisMock.get = jest.fn()
+      .mockImplementation((key) => {
+        if (key === 'stats:/people:count') return Promise.resolve('10');
+        if (key === 'stats:/people:total_time') return Promise.resolve('1000');
+        if (key.startsWith('stats:/people:hour:')) return Promise.resolve('5');
+        return Promise.resolve(null);
       });
-    });
+    redisMock.mget = jest.fn().mockResolvedValue(Array(24).fill('5'));
+
+    await service.calculateAndCacheStats();
+
+    expect(redisMock.set).toHaveBeenCalledWith(
+      'stats:cached:/people',
+      expect.stringContaining('"path":"/people"')
+    );
   });
-  describe('getStatsFrom', () => {
-    it('should return stats from a specific path', async () => {
-      (redisMock.exec as jest.Mock).mockResolvedValue([
-        [null, '5'],
-        [null, '50']
-      ]);
 
-      (redisMock.mget as jest.Mock).mockResolvedValue([
-        '1',
-        ...Array(23).fill('0')
-      ]);
+  it('should get all cached stats', async () => {
+    redisMock.smembers = jest.fn().mockResolvedValue(['/people']);
+    redisMock.get = jest.fn().mockResolvedValue(JSON.stringify({
+      path: '/people',
+      count: 10,
+      averageDuration: 100,
+    }));
 
-      const result = await statsService.getStatsFrom('people');
+    const result = await service.getAllCachedStats();
 
-      expect(result).toEqual({
-        path: 'people',
-        totalRequests: 5,
-        averageResponseTime: '10.00ms',
-        busiestHour: {
-          path: 'people',
-          busiestHour: '00',
-          requests: 1
-        }
-      });
-    });
+    expect(result).toEqual([
+      expect.objectContaining({ path: '/people' }),
+    ]);
+  });
+  
+  it('should trigger calculateAndCacheStats on cron', async () => {
+    const spy = jest.spyOn(service, 'calculateAndCacheStats').mockResolvedValue();
+
+    await service.handleCron();
+
+    expect(spy).toHaveBeenCalled();
   });
 });

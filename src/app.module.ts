@@ -13,10 +13,12 @@ import { SwapiApi } from './swapi/swapi.api';
 import { HttpModule } from '@nestjs/axios';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
     HttpModule,
+    ScheduleModule.forRoot(),
     ConfigModule.forRoot({
       isGlobal: true,
     })],
